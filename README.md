@@ -8,16 +8,69 @@ Ready-to-use monitoring dashboards for:
 - **Compute Engine**: CPU, disk I/O, network traffic, uptime monitoring
 - **GKE Clusters**: Node resources, container utilization, pod metrics, storage usage
 
-## Quick Start
+## Prerequisites
 
-1. **Prerequisites**
+### Required Tools
+```bash
+# Terraform (>= 1.0)
+terraform --version
+
+# Google Cloud SDK
+gcloud --version
+```
+
+### GCP Setup
+
+1. **Enable Required APIs**
    ```bash
-   # Ensure Terraform and gcloud are installed
-   terraform --version
-   gcloud auth application-default login
+   # Enable APIs manually (or set enable_apis = true in terraform.tfvars)
+   gcloud services enable monitoring.googleapis.com
+   gcloud services enable compute.googleapis.com  
+   gcloud services enable logging.googleapis.com
    ```
 
-2. **Deploy**
+2. **Service Account & Permissions**
+
+   **Option A: Using Application Default Credentials (Recommended for development)**
+   ```bash
+   gcloud auth application-default login
+   ```
+   Your user account needs these roles:
+   - `roles/monitoring.editor` - Create and manage dashboards
+   - `roles/serviceusage.serviceUsageAdmin` - Enable APIs (if using `enable_apis = true`)
+
+   **Option B: Using Service Account (Recommended for production)**
+   ```bash
+   # Create service account
+   gcloud iam service-accounts create dashboard-terraform \
+     --display-name="Dashboard Terraform Service Account"
+
+   # Grant required roles
+   gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+     --member="serviceAccount:dashboard-terraform@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+     --role="roles/monitoring.editor"
+
+   gcloud projects add-iam-policy-binding YOUR_PROJECT_ID \
+     --member="serviceAccount:dashboard-terraform@YOUR_PROJECT_ID.iam.gserviceaccount.com" \
+     --role="roles/serviceusage.serviceUsageAdmin"
+
+   # Create and download key
+   gcloud iam service-accounts keys create dashboard-key.json \
+     --iam-account=dashboard-terraform@YOUR_PROJECT_ID.iam.gserviceaccount.com
+
+   # Set environment variable
+   export GOOGLE_APPLICATION_CREDENTIALS="./dashboard-key.json"
+   ```
+
+3. **Verify Access**
+   ```bash
+   # Test API access
+   gcloud monitoring dashboards list --project=YOUR_PROJECT_ID
+   ```
+
+## Quick Start
+
+1. **Deploy with Defaults**
    ```bash
    # Set your project
    export TF_VAR_project_id="your-gcp-project-id"
@@ -27,11 +80,12 @@ Ready-to-use monitoring dashboards for:
    terraform apply
    ```
 
-3. **Custom Selection**
+2. **Custom Configuration**
    ```hcl
    # terraform.tfvars
    project_id = "your-project-id"
    enabled_dashboards = ["compute"]  # Deploy only compute dashboard
+   enable_apis = false              # If APIs already enabled
    ```
 
 ## Configuration
